@@ -8,7 +8,7 @@
 ARG CUDA_VERSION=12.4.1
 #################### BASE BUILD IMAGE ####################
 # prepare basic build environment
-FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04 AS base
+FROM nvcr.io/nvidia/pytorch:24.04-py3 AS base
 
 ARG CUDA_VERSION=12.4.1
 ARG PYTHON_VERSION=3
@@ -36,15 +36,25 @@ RUN apt-get update -y \
 RUN ldconfig /usr/local/cuda-$(echo $CUDA_VERSION | cut -d. -f1,2)/compat/
 
 WORKDIR /workspace
+# max jobs used by Ninja to build extensions
+ARG max_jobs=8
+ENV MAX_JOBS=${max_jobs}
+
 
 # install build and runtime dependencies
 COPY requirements-common.txt requirements-common.txt
 COPY requirements-cuda.txt requirements-cuda.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install xformers==0.0.26.post1 
+RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-cuda.txt
 
 COPY requirements-mamba.txt requirements-mamba.txt
 RUN python3 -m pip install packaging
+RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
 RUN python3 -m pip install -r requirements-mamba.txt
 
 # cuda arch list used by torch
@@ -80,7 +90,7 @@ COPY pyproject.toml pyproject.toml
 COPY vllm vllm
 
 # max jobs used by Ninja to build extensions
-ARG max_jobs=2
+ARG max_jobs=8
 ENV MAX_JOBS=${max_jobs}
 # number of threads used by nvcc
 ARG nvcc_threads=8
@@ -130,12 +140,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 #################### MAMBA Build IMAGE ####################
 FROM dev as mamba-builder
 # max jobs used for build
-ARG max_jobs=2
+ARG max_jobs=5
 ENV MAX_JOBS=${max_jobs}
 
 WORKDIR /usr/src/mamba
 
 COPY requirements-mamba.txt requirements-mamba.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
 
 # Download the wheel or build it if a pre-compiled release doesn't exist
 RUN pip --verbose wheel -r requirements-mamba.txt \
@@ -145,9 +157,12 @@ RUN pip --verbose wheel -r requirements-mamba.txt \
 
 #################### vLLM installation IMAGE ####################
 # image with vLLM installed
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 AS vllm-base
+FROM nvcr.io/nvidia/pytorch:24.04-py3 AS vllm-base
 ARG CUDA_VERSION=12.4.1
 WORKDIR /vllm-workspace
+# max jobs used by Ninja to build extensions
+ARG max_jobs=8
+ENV MAX_JOBS=${max_jobs}
 
 RUN apt-get update -y \
     && apt-get install -y python3-pip git vim
@@ -157,6 +172,13 @@ RUN apt-get update -y \
 # this won't be needed for future versions of this docker image
 # or future versions of triton.
 RUN ldconfig /usr/local/cuda-$(echo $CUDA_VERSION | cut -d. -f1,2)/compat/
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
+RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install xformers==0.0.26.post1
 
 # install vllm wheel first, so that torch etc will be installed
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
