@@ -8,7 +8,7 @@
 ARG CUDA_VERSION=12.4.1
 #################### BASE BUILD IMAGE ####################
 # prepare basic build environment
-FROM nvcr.io/nvidia/pytorch:24.04-py3 AS base
+FROM nvcr.io/nvidia/pytorch:24.06-py3 AS base
 
 ARG CUDA_VERSION=12.4.1
 ARG PYTHON_VERSION=3
@@ -47,7 +47,7 @@ COPY requirements-cuda.txt requirements-cuda.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install xformers==0.0.26.post1 
+    pip install xformers==0.0.27
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-cuda.txt
 
@@ -161,12 +161,19 @@ RUN pip --verbose wheel -r requirements-mamba.txt \
 
 #################### vLLM installation IMAGE ####################
 # image with vLLM installed
-FROM nvcr.io/nvidia/pytorch:24.04-py3 AS vllm-base
+FROM nvcr.io/nvidia/pytorch:24.06-py3 AS vllm-base
 ARG CUDA_VERSION=12.4.1
 WORKDIR /vllm-workspace
 # max jobs used by Ninja to build extensions
 ARG max_jobs=8
 ENV MAX_JOBS=${max_jobs}
+
+# cuda arch list used by torch
+# can be useful for both `dev` and `test`
+# explicitly set the list to avoid issues with torch 2.2
+# see https://github.com/pytorch/pytorch/pull/123243
+ARG torch_cuda_arch_list='7.0 7.5 8.0 8.6 8.9 9.0+PTX'
+ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
 
 RUN apt-get update -y \
     && apt-get install -y python3-pip git vim
@@ -182,7 +189,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install xformers==0.0.26.post1
+    pip install xformers==0.0.27
 
 # install vllm wheel first, so that torch etc will be installed
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
@@ -194,7 +201,7 @@ RUN --mount=type=bind,from=mamba-builder,src=/usr/src/mamba,target=/usr/src/mamb
     python3 -m pip install /usr/src/mamba/*.whl --no-cache-dir
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip install https://github.com/flashinfer-ai/flashinfer/releases/download/v0.0.9/flashinfer-0.0.9+cu121torch2.3-cp310-cp310-linux_x86_64.whl
+git clone https://github.com/flashinfer-ai/flashinfer.git ; cd flashinfer/python ; pip install -e .
 #################### vLLM installation IMAGE ####################
 
 
