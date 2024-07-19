@@ -61,7 +61,7 @@ RUN python3 -m pip install -r requirements-mamba.txt
 # can be useful for both `dev` and `test`
 # explicitly set the list to avoid issues with torch 2.2
 # see https://github.com/pytorch/pytorch/pull/123243
-ARG torch_cuda_arch_list='7.0 7.5 8.0 8.6 8.9 9.0+PTX'
+ARG torch_cuda_arch_list='7.5 8.0 8.6 8.9 9.0+PTX'
 ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
 #################### BASE BUILD IMAGE ####################
 
@@ -172,7 +172,7 @@ ENV MAX_JOBS=${max_jobs}
 # can be useful for both `dev` and `test`
 # explicitly set the list to avoid issues with torch 2.2
 # see https://github.com/pytorch/pytorch/pull/123243
-ARG torch_cuda_arch_list='7.0 7.5 8.0 8.6 8.9 9.0+PTX'
+ARG torch_cuda_arch_list='7.5 8.0 8.6 8.9 9.0+PTX'
 ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
 
 RUN apt-get update -y \
