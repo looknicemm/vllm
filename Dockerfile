@@ -15,6 +15,13 @@ ARG PYTHON_VERSION=3
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# cuda arch list used by torch
+# can be useful for both `dev` and `test`
+# explicitly set the list to avoid issues with torch 2.2
+# see https://github.com/pytorch/pytorch/pull/123243
+ARG torch_cuda_arch_list='7.5 8.0 8.6 8.9 9.0+PTX'
+ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
+
 RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
     && apt-get update -y \
@@ -40,29 +47,44 @@ WORKDIR /workspace
 ARG max_jobs=8
 ENV MAX_JOBS=${max_jobs}
 
-
 # install build and runtime dependencies
 COPY requirements-common.txt requirements-common.txt
 COPY requirements-cuda.txt requirements-cuda.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install xformers==0.0.27
+
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-cuda.txt
 
-COPY requirements-mamba.txt requirements-mamba.txt
-RUN python3 -m pip install packaging
-RUN --mount=type=cache,target=/root/.cache/pip \
-    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
-RUN python3 -m pip install -r requirements-mamba.txt
 
-# cuda arch list used by torch
-# can be useful for both `dev` and `test`
-# explicitly set the list to avoid issues with torch 2.2
-# see https://github.com/pytorch/pytorch/pull/123243
-ARG torch_cuda_arch_list='7.5 8.0 8.6 8.9 9.0+PTX'
-ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
+RUN mkdir vllm-aarch64-whl
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation git+https://github.com/vllm-project/flash-attention.git
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation xformers==0.0.27
+
+RUN python3 -m pip install packaging
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  pip --verbose wheel -w /workspace/vllm-aarch64-whl .
+
+# Needed to ensure causal-conv1d builds from scratch
+ENV CAUSAL_CONV1D_FORCE_BUILD=TRUE
+ENV CAUSAL_CONV1D_SKIP_CUDA_BUILD=FALSE
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir git+https://github.com/Dao-AILab/causal-conv1d.git
+
+ENV MAMBA_FORCE_BUILD=TRUE
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir git+https://github.com/state-spaces/mamba.git
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+	git clone https://github.com/flashinfer-ai/flashinfer.git ; cd flashinfer/python ; pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir .
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m pip install /workspace/vllm-aarch64-whl/*.whl --no-cache-dir --no-deps
+
 #################### BASE BUILD IMAGE ####################
 
 #################### WHEEL BUILD IMAGE ####################
@@ -142,20 +164,20 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 #################### DEV IMAGE ####################
 #################### MAMBA Build IMAGE ####################
-FROM dev as mamba-builder
+#FROM dev as mamba-builder
 # max jobs used for build
-ARG max_jobs=5
-ENV MAX_JOBS=${max_jobs}
+#ARG max_jobs=5
+#ENV MAX_JOBS=${max_jobs}
 
-WORKDIR /usr/src/mamba
+#WORKDIR /usr/src/mamba
 
-COPY requirements-mamba.txt requirements-mamba.txt
-RUN --mount=type=cache,target=/root/.cache/pip \
-    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
+#COPY requirements-mamba.txt requirements-mamba.txt
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
 
 # Download the wheel or build it if a pre-compiled release doesn't exist
-RUN pip --verbose wheel -r requirements-mamba.txt \
-    --no-build-isolation --no-deps --no-cache-dir
+#RUN pip --verbose wheel -r requirements-mamba.txt \
+#    --no-build-isolation --no-deps --no-cache-dir
 
 #################### MAMBA Build IMAGE ####################
 
@@ -184,24 +206,21 @@ RUN apt-get update -y \
 # or future versions of triton.
 RUN ldconfig /usr/local/cuda-$(echo $CUDA_VERSION | cut -d. -f1,2)/compat/
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    git clone https://github.com/openai/triton ; cd triton/python ; git submodule update --init --recursive ;  python setup.py install
-RUN --mount=type=cache,target=/root/.cache/pip \
-    git clone https://github.com/vllm-project/flash-attention ; cd flash-attention ; pip install -e . --no-dependencies
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install xformers==0.0.27
+# install build and runtime dependencies
+COPY requirements-common.txt requirements-common.txt
+COPY requirements-cuda.txt requirements-cuda.txt
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m pip install -r requirements-cuda.txt
 # install vllm wheel first, so that torch etc will be installed
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
     --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install dist/*.whl --verbose
 
-RUN --mount=type=bind,from=mamba-builder,src=/usr/src/mamba,target=/usr/src/mamba \
+RUN --mount=type=bind,from=base,src=/workspace/vllm-aarch64-whl,target=/workspace/vllm-aarch64-whl \
     --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip install /usr/src/mamba/*.whl --no-cache-dir
+    python3 -m pip install /workspace/vllm-aarch64-whl/*.whl --no-deps --no-cache-dir
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-git clone https://github.com/flashinfer-ai/flashinfer.git ; cd flashinfer/python ; pip install -e .
 #################### vLLM installation IMAGE ####################
 
 
