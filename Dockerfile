@@ -8,7 +8,7 @@
 ARG CUDA_VERSION=12.4.1
 #################### BASE BUILD IMAGE ####################
 # prepare basic build environment
-FROM nvcr.io/nvidia/pytorch:24.06-py3 AS base
+FROM nvcr.io/nvidia/pytorch:24.07-py3 AS base
 
 ARG CUDA_VERSION=12.4.1
 ARG PYTHON_VERSION=3.10
@@ -190,7 +190,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 #################### vLLM installation IMAGE ####################
 # image with vLLM installed
-FROM nvcr.io/nvidia/pytorch:24.06-py3 AS vllm-base
+FROM nvcr.io/nvidia/pytorch:24.07-py3 AS vllm-base
 ARG CUDA_VERSION=12.4.1
 ARG PYTHON_VERSION=3.10
 WORKDIR /vllm-workspace
@@ -242,9 +242,6 @@ RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist
 RUN --mount=type=bind,from=base,src=/workspace/vllm-aarch64-whl,target=/workspace/vllm-aarch64-whl \
     --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install /workspace/vllm-aarch64-whl/*.whl --no-deps --no-cache-dir
-
-RUN --mount=type=cache,target=/root/.cache/pip \
-git clone https://github.com/flashinfer-ai/flashinfer.git ; cd flashinfer/python ; pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir .
 
 #################### vLLM installation IMAGE ####################
 
