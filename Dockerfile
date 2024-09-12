@@ -10,7 +10,7 @@ ARG CUDA_VERSION=12.5.0
 # prepare basic build environment
 FROM nvcr.io/nvidia/pytorch:24.07-py3 AS base
 ARG CUDA_VERSION=12.5.0
-ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.12
 # cuda arch list used by torch
 # can be useful for both `dev` and `test`
 # explicitly set the list to avoid issues with torch 2.2
@@ -43,7 +43,6 @@ ENV MAX_JOBS=${max_jobs}
 
 # install build and runtime dependencies
 COPY requirements-common.txt requirements-common.txt
-COPY requirements-adag.txt requirements-adag.txt
 COPY requirements-cuda.txt requirements-cuda.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
@@ -97,7 +96,6 @@ COPY setup.py setup.py
 COPY cmake cmake
 COPY CMakeLists.txt CMakeLists.txt
 COPY requirements-common.txt requirements-common.txt
-COPY requirements-adag.txt requirements-adag.txt
 COPY requirements-cuda.txt requirements-cuda.txt
 COPY pyproject.toml pyproject.toml
 COPY vllm vllm
@@ -165,7 +163,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # image with vLLM installed
 FROM nvcr.io/nvidia/pytorch:24.07-py3 AS vllm-base
 ARG CUDA_VERSION=12.5.0
-ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.12
 WORKDIR /vllm-workspace
 # max jobs used by Ninja to build extensions
 ARG max_jobs=8
@@ -186,6 +184,7 @@ RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
     && apt-get update -y \
     && apt-get install -y ccache software-properties-common git curl sudo vim python3-pip \
+    && apt-get install -y ffmpeg libsm6 libxext6 libgl1 \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update -y \
     && apt-get install -y python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-venv libibverbs-dev \
@@ -207,6 +206,10 @@ COPY requirements-cuda.txt requirements-cuda.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-cuda.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m pip uninstall pynvml
+
 # install vllm wheel first, so that torch etc will be installed
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
     --mount=type=cache,target=/root/.cache/pip \
@@ -227,6 +230,10 @@ FROM vllm-base AS test
 ADD . /vllm-workspace/
 
 # install development dependencies (for testing)
+# A newer setuptools is required for installing some test dependencies from source that do not publish python 3.12 wheels
+# This installation must complete before the test dependencies are collected and installed.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m pip install "setuptools>=74.1.1"
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-dev.txt
 
