@@ -10,13 +10,14 @@ ARG CUDA_VERSION=12.5.0
 # prepare basic build environment
 FROM nvcr.io/nvidia/pytorch:24.07-py3 AS base
 ARG CUDA_VERSION=12.5.0
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.10
 # cuda arch list used by torch
 # can be useful for both `dev` and `test`
 # explicitly set the list to avoid issues with torch 2.2
 # see https://github.com/pytorch/pytorch/pull/123243
 ARG torch_cuda_arch_list='7.5 8.0 8.6 8.9 9.0+PTX'
 ENV TORCH_CUDA_ARCH_LIST=${torch_cuda_arch_list}
+ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
     && apt-get update -y \
@@ -113,6 +114,7 @@ ENV BUILDKITE_COMMIT=${buildkite_commit}
 ARG USE_SCCACHE
 ARG SCCACHE_BUCKET_NAME=vllm-build-sccache
 ARG SCCACHE_REGION_NAME=us-west-2
+ENV DEBIAN_FRONTEND=noninteractive
 # if USE_SCCACHE is set, use sccache to speed up compilation
 RUN --mount=type=cache,target=/root/.cache/pip \
     if [ "$USE_SCCACHE" = "1" ]; then \
@@ -163,7 +165,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # image with vLLM installed
 FROM nvcr.io/nvidia/pytorch:24.07-py3 AS vllm-base
 ARG CUDA_VERSION=12.5.0
-ARG PYTHON_VERSION=3.12
+ARG PYTHON_VERSION=3.10
 WORKDIR /vllm-workspace
 # max jobs used by Ninja to build extensions
 ARG max_jobs=8
@@ -208,7 +210,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-cuda.txt
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip uninstall pynvml
+    python3 -m pip uninstall -y pynvml
 
 # install vllm wheel first, so that torch etc will be installed
 RUN --mount=type=bind,from=build,src=/workspace/dist,target=/vllm-workspace/dist \
