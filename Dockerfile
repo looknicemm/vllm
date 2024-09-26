@@ -120,11 +120,8 @@ ENV NVCC_THREADS=$nvcc_threads
 ARG USE_SCCACHE
 ARG SCCACHE_BUCKET_NAME=vllm-build-sccache
 ARG SCCACHE_REGION_NAME=us-west-2
-<<<<<<< HEAD
 ENV DEBIAN_FRONTEND=noninteractive
-=======
 ARG SCCACHE_S3_NO_CREDENTIALS=0
->>>>>>> main
 # if USE_SCCACHE is set, use sccache to speed up compilation
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=.git,target=.git \
