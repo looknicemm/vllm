@@ -86,6 +86,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     git clone -b v0.1.6 https://github.com/flashinfer-ai/flashinfer.git ; cd flashinfer/python ; pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir .
 
 RUN --mount=type=cache,target=/root/.cache/pip \
+    git clone -b 0.44.1 https://github.com/bitsandbytes-foundation/bitsandbytes.git ; cd bitsandbytes ; pip --verbose wheel --use-pep517 --no-deps -w /workspace/vllm-aarch64-whl --no-build-isolation --no-cache-dir .
+
+
+RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install /workspace/vllm-aarch64-whl/*.whl --no-cache-dir --no-deps
 
 # cuda arch list used by torch
@@ -232,6 +236,9 @@ RUN --mount=type=bind,from=base,src=/workspace/vllm-aarch64-whl,target=/workspac
     --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install /workspace/vllm-aarch64-whl/*.whl --no-deps --no-cache-dir
 
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install opencv-python-headless==4.5.4.58
+
 #################### vLLM installation IMAGE ####################
 
 
@@ -261,7 +268,7 @@ FROM vllm-base AS vllm-openai
 
 # install additional dependencies for openai api server
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install accelerate hf_transfer 'modelscope!=1.15.0' bitsandbytes>=0.44.0 timm==0.9.10
+    pip install 'accelerate' 'hf_transfer' 'modelscope!=1.15.0' 'timm==0.9.10'
 
 ENV VLLM_USAGE_SOURCE production-docker-image
 
