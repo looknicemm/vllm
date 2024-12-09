@@ -8,7 +8,6 @@ if TYPE_CHECKING:
     VLLM_RPC_BASE_PATH: str = tempfile.gettempdir()
     VLLM_USE_MODELSCOPE: bool = False
     VLLM_RINGBUFFER_WARNING_INTERVAL: int = 60
-    VLLM_INSTANCE_ID: Optional[str] = None
     VLLM_NCCL_SO_PATH: Optional[str] = None
     LD_LIBRARY_PATH: Optional[str] = None
     VLLM_USE_TRITON_FLASH_ATTN: bool = False
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
     VLLM_WORKER_MULTIPROC_METHOD: str = "fork"
     VLLM_ASSETS_CACHE: str = os.path.join(VLLM_CACHE_ROOT, "assets")
     VLLM_IMAGE_FETCH_TIMEOUT: int = 5
-    VLLM_VIDEO_FETCH_TIMEOUT: int = 15
+    VLLM_VIDEO_FETCH_TIMEOUT: int = 30
     VLLM_AUDIO_FETCH_TIMEOUT: int = 10
     VLLM_TARGET_DEVICE: str = "cuda"
     MAX_JOBS: Optional[str] = None
@@ -113,7 +112,8 @@ environment_variables: Dict[str, Callable[[], Any]] = {
 
     # If set, vllm will use precompiled binaries (*.so)
     "VLLM_USE_PRECOMPILED":
-    lambda: bool(os.environ.get("VLLM_USE_PRECOMPILED")),
+    lambda: bool(os.environ.get("VLLM_USE_PRECOMPILED")) or bool(
+        os.environ.get("VLLM_PRECOMPILED_WHEEL_LOCATION")),
 
     # CMake build type
     # If not set, defaults to "Debug" or "RelWithDebInfo"
@@ -153,7 +153,7 @@ environment_variables: Dict[str, Callable[[], Any]] = {
     # If you are using multi-node inference, you should set this differently
     # on each node.
     'VLLM_HOST_IP':
-    lambda: os.getenv('VLLM_HOST_IP', "") or os.getenv("HOST_IP", ""),
+    lambda: os.getenv('VLLM_HOST_IP', ""),
 
     # used in distributed environment to manually set the communication port
     # Note: if VLLM_PORT is set, and some code asks for multiple ports, the
@@ -173,11 +173,6 @@ environment_variables: Dict[str, Callable[[], Any]] = {
     # note that the value is true or false, not numbers
     "VLLM_USE_MODELSCOPE":
     lambda: os.environ.get("VLLM_USE_MODELSCOPE", "False").lower() == "true",
-
-    # Instance id represents an instance of the VLLM. All processes in the same
-    # instance should have the same instance id.
-    "VLLM_INSTANCE_ID":
-    lambda: os.environ.get("VLLM_INSTANCE_ID", None),
 
     # Interval in seconds to log a warning message when the ring buffer is full
     "VLLM_RINGBUFFER_WARNING_INTERVAL":

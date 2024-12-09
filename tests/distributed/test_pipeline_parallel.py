@@ -167,6 +167,7 @@ TEXT_GENERATION_MODELS = {
     "mosaicml/mpt-7b": PPTestSettings.fast(),
     "nvidia/Minitron-8B-Base": PPTestSettings.fast(),
     "allenai/OLMo-1B-hf": PPTestSettings.fast(),
+    "shanearora/OLMo-7B-1124-hf": PPTestSettings.fast(),
     "allenai/OLMoE-1B-7B-0924-Instruct": PPTestSettings.fast(),
     "facebook/opt-iml-max-1.3b": PPTestSettings.fast(),
     "OrionStarAI/Orion-14B-Chat": PPTestSettings.fast(trust_remote_code=True),
@@ -246,9 +247,19 @@ def _compare_tp(
     *,
     method: Literal["generate", "encode"],
 ):
-    tp_size, pp_size, eager_mode, chunked_prefill = parallel_setup
-    multi_node_only, trust_remote_code, tokenizer_mode, \
-        load_format, hf_overrides = test_options
+    (
+        tp_size,
+        pp_size,
+        eager_mode,
+        chunked_prefill,
+    ) = parallel_setup
+    (
+        multi_node_only,
+        trust_remote_code,
+        tokenizer_mode,
+        load_format,
+        hf_overrides,
+    ) = test_options
 
     if num_gpus_available < tp_size * pp_size:
         pytest.skip(f"Need at least {tp_size} x {pp_size} GPUs")
