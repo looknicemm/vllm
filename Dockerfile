@@ -160,7 +160,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=.git,target=.git \
     if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-        git clone -b 0.44.1 https://github.com/bitsandbytes-foundation/bitsandbytes.git && \
+        git clone -b 0.45.0 https://github.com/bitsandbytes-foundation/bitsandbytes.git && \
         cd bitsandbytes && \
         pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
     fi
@@ -201,8 +201,8 @@ COPY requirements-test.txt requirements-test.txt
 COPY requirements-dev.txt requirements-dev.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m pip install -r requirements-dev.txt
-
 #################### DEV IMAGE ####################
+
 #################### vLLM installation IMAGE ####################
 # image with vLLM installed
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 AS vllm-base
@@ -258,7 +258,6 @@ fi
 COPY examples examples
 #################### vLLM installation IMAGE ####################
 
-
 #################### TEST IMAGE ####################
 # image to run unit testing suite
 # note that this uses vllm installed by `pip`
@@ -288,7 +287,6 @@ COPY vllm/v1 /usr/local/lib/python3.12/dist-packages/vllm/v1
 RUN mkdir test_docs
 RUN mv docs test_docs/
 RUN mv vllm test_docs/
-
 #################### TEST IMAGE ####################
 
 #################### OPENAI API SERVER ####################
@@ -297,8 +295,11 @@ FROM vllm-base AS vllm-openai
 
 # install additional dependencies for openai api server
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install accelerate hf_transfer 'modelscope!=1.15.0' 'bitsandbytes>=0.44.0' 'timm==0.9.10'
-
+    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        pip install accelerate hf_transfer 'modelscope!=1.15.0' 'bitsandbytes>=0.45.0' 'timm==0.9.10'; \
+    else \
+        pip install accelerate hf_transfer 'modelscope!=1.15.0' 'bitsandbytes>=0.45.0' 'timm==0.9.10'; \
+    fi
 ENV VLLM_USAGE_SOURCE production-docker-image
 
 #################### OPENAI API SERVER ####################

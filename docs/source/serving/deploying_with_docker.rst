@@ -55,14 +55,11 @@ of PyTorch Nightly and should be considered **experimental**. Using the flag `--
     $ DOCKER_BUILDKIT=1 sudo docker build . \
       --target vllm-openai \
       -platform "linux/arm64" \
-      -t drikster80/vllm-gh200-openai:v0.6.4.post1 \
+      -t drikster80/vllm-gh200-openai:v0.6.5 \
       --build-arg max_jobs=66 \
       --build-arg nvcc_threads=2 \
       --build-arg torch_cuda_arch_list="9.0+PTX" \
       --build-arg vllm_fa_cmake_gpu_arches="90-real"
-
-
-
 
 To run vLLM:
 
