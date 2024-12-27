@@ -173,10 +173,10 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
     fi
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-       pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation xformers==v0.0.28.post3 ; \
-    fi
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+#       pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation xformers==v0.0.28.post3 ; \
+#    fi
 
 
 # Check the size of the wheel if RUN_WHEEL_CHECK is true
