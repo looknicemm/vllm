@@ -15,12 +15,12 @@ if TYPE_CHECKING:
     from vllm.config import ModelConfig
     from vllm.sequence import SequenceGroupMetadata
 
-from .inputs import (MultiModalData, MultiModalDataDict, MultiModalKwargs,
+from .inputs import (ModalityData, MultiModalDataDict, MultiModalKwargs,
                      PlaceholderRange)
 
 logger = init_logger(__name__)
 
-MultiModalInputMapper = Callable[[InputContext, MultiModalData[object]],
+MultiModalInputMapper = Callable[[InputContext, ModalityData[object]],
                                  MultiModalKwargs]
 """
 Return a dictionary to be passed as keyword arguments to
@@ -49,9 +49,6 @@ class MultiModalPlugin(ABC):
     process the same data differently). This registry is in turn used by
     :class:`~MultiModalRegistry` which acts at a higher level
     (i.e., the modality of the data).
-
-    See also:
-        :ref:`adding-multimodal-plugin`
     """
 
     def __init__(self) -> None:
@@ -69,7 +66,7 @@ class MultiModalPlugin(ABC):
     def _default_input_mapper(
         self,
         ctx: InputContext,
-        data: MultiModalData[Any],
+        data: ModalityData[Any],
         **mm_processor_kwargs,
     ) -> MultiModalKwargs:
         """
@@ -118,7 +115,7 @@ class MultiModalPlugin(ABC):
     def map_input(
         self,
         model_config: "ModelConfig",
-        data: MultiModalData[Any],
+        data: ModalityData[Any],
         mm_processor_kwargs: Optional[dict[str, Any]],
     ) -> MultiModalKwargs:
         """

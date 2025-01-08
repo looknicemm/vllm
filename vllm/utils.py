@@ -50,7 +50,6 @@ from typing_extensions import ParamSpec, TypeIs, assert_never
 
 import vllm.envs as envs
 from vllm.logger import enable_trace_function_call, init_logger
-from vllm.platforms import current_platform
 
 if TYPE_CHECKING:
     from vllm.config import VllmConfig
@@ -59,7 +58,7 @@ logger = init_logger(__name__)
 
 # Exception strings for non-implemented encoder/decoder scenarios
 
-# Reminder: Please update docs/source/usage/compatibility_matrix.md
+# Reminder: Please update docs/source/features/compatibility_matrix.md
 # If the feature combo become valid
 
 STR_NOT_IMPL_ENC_DEC_SWA = \
@@ -525,6 +524,13 @@ def get_open_port() -> int:
 
 
 def find_process_using_port(port: int) -> Optional[psutil.Process]:
+    # TODO: We can not check for running processes with network
+    # port on macOS. Therefore, we can not have a full graceful shutdown
+    # of vLLM. For now, let's not look for processes in this case.
+    # Ref: https://www.florianreinhard.de/accessdenied-in-psutil/
+    if sys.platform.startswith("darwin"):
+        return None
+
     for conn in psutil.net_connections():
         if conn.laddr.port == port:
             try:
@@ -609,6 +615,7 @@ def create_kv_caches_with_random_flash(
     seed: int = 0,
     device: Optional[str] = "cuda",
 ) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
+    from vllm.platforms import current_platform
     current_platform.seed_everything(seed)
 
     torch_dtype = get_kv_cache_torch_dtype(cache_dtype, model_dtype)
@@ -650,7 +657,7 @@ def create_kv_caches_with_random(
         raise ValueError(
             f"Does not support key cache of type fp8 with head_size {head_size}"
         )
-
+    from vllm.platforms import current_platform
     current_platform.seed_everything(seed)
 
     torch_dtype = get_kv_cache_torch_dtype(cache_dtype, model_dtype)
@@ -703,6 +710,7 @@ def print_warning_once(msg: str) -> None:
 
 @lru_cache(maxsize=None)
 def is_pin_memory_available() -> bool:
+    from vllm.platforms import current_platform
     return current_platform.is_pin_memory_available()
 
 
@@ -713,6 +721,7 @@ class DeviceMemoryProfiler:
 
     def current_memory_usage(self) -> float:
         # Return the memory usage in bytes.
+        from vllm.platforms import current_platform
         if current_platform.is_cuda_alike():
             torch.cuda.reset_peak_memory_stats(self.device)
             mem = torch.cuda.max_memory_allocated(self.device)
@@ -1066,6 +1075,7 @@ def _cuda_device_count_stateless(
     import torch.cuda
     import torch.version
 
+    from vllm.platforms import current_platform
     if not torch.cuda._is_compiled():
         return 0
     if current_platform.is_rocm():
@@ -1673,6 +1683,7 @@ def direct_register_custom_op(
         return
 
     if not supports_custom_op():
+        from vllm.platforms import current_platform
         assert not current_platform.is_cuda_alike(), (
             "cuda platform needs torch>=2.4 to support custom op, "
             "chances are you are using an old version of pytorch "
@@ -1738,10 +1749,10 @@ class MemorySnapshot:
     timestamp: float = 0.0
 
     def measure(self):
-        self.torch_peak_in_bytes = torch.cuda.memory_stats(
-        )["allocated_bytes.all.peak"]
-        self.torch_memory_in_bytes = torch.cuda.memory_stats(
-        )["allocated_bytes.all.current"]
+        self.torch_peak_in_bytes = torch.cuda.max_memory_reserved()
+        # torch.cuda.memory_reserved() is how many bytes
+        # PyTorch gets from cuda (by calling cudaMalloc, etc.)
+        self.torch_memory_in_bytes = torch.cuda.memory_reserved()
         self.timestamp = time.time()
 
     def __sub__(self, other: "MemorySnapshot") -> "MemorySnapshot":
@@ -1818,10 +1829,10 @@ def memory_profiling(
 
     The memory used for loading weights (a.) is directly given from the argument `weights_memory_in_bytes`.
 
-    The increase of ``torch.cuda.memory_stats()["allocated_bytes.all.peak"]` after profiling gives (b.).
+    The increase of `torch.cuda.memory_stats()["allocated_bytes.all.peak"]` after profiling gives (b.).
 
     (c.) is tricky. We measure the total memory used in this GPU (`torch.cuda.mem_get_info()[1] - torch.cuda.mem_get_info()[0]`),
-    subtract the baseline memory, the memory used by the model weights, and diff of `torch.cuda.memory_stats()["allocated_bytes.all.current"]`.
+    subtract the baseline memory, the memory used by the model weights, and diff of `torch.cuda.memory_reserved()`.
     """ # noqa
     torch.cuda.reset_peak_memory_stats()
 
@@ -1934,7 +1945,7 @@ def _check_multiproc_method():
                        "the `spawn` multiprocessing start method. Setting "
                        "VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. "
                        "See https://docs.vllm.ai/en/latest/getting_started/"
-                       "debugging.html#python-multiprocessing "
+                       "troubleshooting.html#python-multiprocessing "
                        "for more information.")
         os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 

@@ -323,6 +323,7 @@ class InputRegistry:
         # Avoid circular import
         from vllm.model_executor.model_loader import get_model_architecture
         from vllm.multimodal import MultiModalKwargs
+        from vllm.multimodal.profiling import MultiModalProfiler
         from vllm.multimodal.utils import cached_get_tokenizer
 
         if mm_registry.has_processor(model_config):
@@ -331,13 +332,8 @@ class InputRegistry:
                 trust_remote_code=model_config.trust_remote_code,
             )
             processor = mm_registry.create_processor(model_config, tokenizer)
-
-            mm_counts = mm_registry.get_mm_limits_per_prompt(model_config)
-            mm_max_tokens = mm_registry.get_max_tokens_by_modality(
-                model_config)
-
-            dummy_data = processor.get_dummy_data(seq_len, mm_counts,
-                                                  mm_max_tokens)
+            profiler = MultiModalProfiler(processor)
+            dummy_data = profiler.get_dummy_data(seq_len)
         else:
             model_cls, _ = get_model_architecture(model_config)
             if is_encoder_data:
@@ -425,7 +421,7 @@ class InputRegistry:
             # Be more strict in V2
             assert "mm_kwargs" in inputs
         else:
-            assert_never(inputs["type"])
+            assert_never(inputs["type"])  # type: ignore[arg-type]
 
     def process_input(self, model_config: "ModelConfig",
                       inputs: ProcessorInputs) -> ProcessorInputs:
