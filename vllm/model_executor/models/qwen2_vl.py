@@ -66,8 +66,9 @@ from vllm.sequence import IntermediateTensors
 from vllm.transformers_utils.config import uses_mrope
 
 from .interfaces import SupportsLoRA, SupportsMultiModal, SupportsPP
-from .utils import (AutoWeightsLoader, WeightsMapper, get_vit_attn_backend,
+from .utils import (AutoWeightsLoader, WeightsMapper,
                     init_vllm_registered_model, maybe_prefix)
+from .vision import get_vit_attn_backend
 
 logger = init_logger(__name__)
 
@@ -1036,16 +1037,6 @@ class Qwen2VLForConditionalGeneration(nn.Module, SupportsMultiModal,
     ]
     embedding_modules = {}
     embedding_padding_modules = []
-
-    # BitandBytes specific attributes
-    bitsandbytes_stacked_params_mapping = {
-        # shard_name, weight_name, index
-        "q_proj": ("qkv_proj", 0),
-        "k_proj": ("qkv_proj", 1),
-        "v_proj": ("qkv_proj", 2),
-        "gate_proj": ("gate_up_proj", 0),
-        "up_proj": ("gate_up_proj", 1),
-    }
 
     # To ensure correct weight loading and mapping.
     hf_to_vllm_mapper = WeightsMapper(orig_to_new_prefix={

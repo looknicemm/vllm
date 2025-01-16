@@ -15,6 +15,10 @@ Easy, fast, and cheap LLM serving for everyone
 
 ---
 
+The first vLLM meetup in 2025 is happening on January 22nd, Wednesday, with Google Cloud in San Francisco! We will talk about vLLM's performant V1 architecture, Q1 roadmap, Google Cloud's innovation around vLLM: networking, Cloud Run, Vertex, and TPU! [Register Now](https://lu.ma/zep56hui)
+
+---
+
 *Latest News* 🔥
 - [2024/12] vLLM joins [pytorch ecosystem](https://pytorch.org/blog/vllm-joins-pytorch)! Easy, Fast, and Cheap LLM Serving for Everyone!
 - [2024/11] We hosted [the seventh vLLM meetup](https://lu.ma/h0qvrajz) with Snowflake! Please find the meetup slides from vLLM team [here](https://docs.google.com/presentation/d/1e3CxQBV3JsfGp30SwyvS3eM_tW-ghOhJ9PAJGK6KR54/edit?usp=sharing), and Snowflake team [here](https://docs.google.com/presentation/d/1qF3RkDAbOULwz9WK5TOltt2fE9t6uIc_hVNLFAaQX6A/edit?usp=sharing).
@@ -34,10 +38,12 @@ Easy, fast, and cheap LLM serving for everyone
 ## About
 vLLM is a fast and easy-to-use library for LLM inference and serving.
 
+Originally developed in the [Sky Computing Lab](https://sky.cs.berkeley.edu) at UC Berkeley, vLLM has evloved into a community-driven project with contributions from both academia and industry.
+
 vLLM is fast with:
 
 - State-of-the-art serving throughput
-- Efficient management of attention key and value memory with **PagedAttention**
+- Efficient management of attention key and value memory with [**PagedAttention**](https://blog.vllm.ai/2023/06/20/vllm.html)
 - Continuous batching of incoming requests
 - Fast model execution with CUDA/HIP graph
 - Quantizations: [GPTQ](https://arxiv.org/abs/2210.17323), [AWQ](https://arxiv.org/abs/2306.00978), INT4, INT8, and FP8.
@@ -68,16 +74,16 @@ Find the full list of supported models [here](https://docs.vllm.ai/en/latest/mod
 
 ## Getting Started
 
-Install vLLM with `pip` or [from source](https://vllm.readthedocs.io/en/latest/getting_started/installation.html#build-from-source):
+Install vLLM with `pip` or [from source](https://docs.vllm.ai/en/latest/getting_started/installation/gpu/index.html#build-wheel-from-source):
 
 ```bash
 pip install vllm
 ```
 
-Visit our [documentation](https://vllm.readthedocs.io/en/latest/) to learn more.
-- [Installation](https://vllm.readthedocs.io/en/latest/getting_started/installation.html)
-- [Quickstart](https://vllm.readthedocs.io/en/latest/getting_started/quickstart.html)
-- [List of Supported Models](https://vllm.readthedocs.io/en/latest/models/supported_models.html)
+Visit our [documentation](https://docs.vllm.ai/en/latest/) to learn more.
+- [Installation](https://docs.vllm.ai/en/latest/getting_started/installation/index.html)
+- [Quickstart](https://docs.vllm.ai/en/latest/getting_started/quickstart.html)
+- [List of Supported Models](https://docs.vllm.ai/en/latest/models/supported_models.html)
 
 ## Contributing
 

@@ -16,7 +16,7 @@ from transformers.models.whisper.modeling_whisper import WhisperEncoder
 from vllm import envs
 from vllm.attention import AttentionMetadata
 from vllm.config import VllmConfig
-from vllm.model_executor.layers.activation import SiluAndMul, get_act_fn
+from vllm.model_executor.layers.activation import MulAndSilu, get_act_fn
 from vllm.model_executor.layers.layernorm import RMSNorm
 from vllm.model_executor.layers.sampler import SamplerOutput, get_sampler
 from vllm.model_executor.model_loader.loader import DefaultModelLoader
@@ -138,12 +138,8 @@ class UltravoxMultiModalProcessor(
     ) -> BatchFeature:
         # Text-only input not supported in composite processor
         if not mm_data:
-            tokenizer = self.info.get_tokenizer()
-
-            prompt_ids = tokenizer.encode(
-                prompt,
-                add_special_tokens=False,  # type: ignore
-            )
+            prompt_ids = self.info.get_tokenizer().encode(prompt)
+            prompt_ids = self._apply_hf_processor_tokens_only(prompt_ids)
             return BatchFeature(dict(input_ids=[prompt_ids]), tensor_type="pt")
 
         mm_data = dict(mm_data)
@@ -187,6 +183,16 @@ class UltravoxMultiModalProcessor(
             audio_token_len=audio_token_len,
         )
         return BatchFeature(combined_outputs)
+
+    def _apply_hf_processor_tokens_only(
+        self,
+        prompt_tokens: list[int],
+    ) -> list[int]:
+        # HF processor omits bos_token_id by setting add_special_tokens=False
+        tokenizer = self.info.get_tokenizer()
+        assert prompt_tokens[0] == tokenizer.bos_token_id
+
+        return prompt_tokens[1:]
 
     def _get_mm_fields_config(
         self,
@@ -242,15 +248,6 @@ class StackAudioFrames(nn.Module):
         return audio_embeds
 
 
-class FlippedSiluAndMul(SiluAndMul):
-    """Ultravox is trained with SwiGLU with flipped halves."""
-
-    def forward(self, x: torch.Tensor):
-        a, b = x.chunk(2, dim=-1)
-        flipped = torch.cat((b, a), dim=-1)
-        return super().forward(flipped)
-
-
 class UltravoxProjector(nn.Module):
 
     def __init__(self, config: UltravoxConfig):
@@ -263,7 +260,7 @@ class UltravoxProjector(nn.Module):
         dim = self.hidden_dim
 
         if config.projector_act == "swiglu":
-            self.act = FlippedSiluAndMul()
+            self.act = MulAndSilu()
             dim = dim // 2
         else:
             self.act = get_act_fn(config.projector_act)
