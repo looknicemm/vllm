@@ -20,7 +20,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
     && apt-get update -y \
-    && apt-get install -y --allow-change-held-packages ccache software-properties-common git curl wget sudo kmod libnccl2 libnccl-dev \
+    && apt-get install -y --allow-change-held-packages ccache software-properties-common git curl wget sudo kmod libtcmalloc-minimal4 libnccl2 libnccl-dev \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update -y \
     && apt-get install -y python${PYTHON_VERSION} python${PYTHON_VERSION}-dev python${PYTHON_VERSION}-venv \
@@ -133,7 +133,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         git \
         build-essential
 
-RUN git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git && \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=bind,source=.git,target=.git \
+    git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp.git && \
     cd aws-sdk-cpp && \
     mkdir build && \
     cd build && \
@@ -187,13 +189,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     CAUSAL_CONV1D_FORCE_BUILD=TRUE CAUSAL_CONV1D_SKIP_CUDA_BUILD=FALSE pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir git+https://github.com/Dao-AILab/causal-conv1d.git ; \
     fi
 
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=.git,target=.git \
-    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-        git clone -b v2.7.2.post1 https://github.com/Dao-AILab/flash-attention && \
-        cd  flash-attention && \
-        pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
-    fi
+# VLLM Contains their own flash attention
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    --mount=type=bind,source=.git,target=.git \
+#    if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+#        git clone -b v2.7.2.post1 https://github.com/Dao-AILab/flash-attention && \
+#        cd  flash-attention && \
+#        pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
+#    fi
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
@@ -212,8 +215,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=.git,target=.git \
     if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
         apt-get update && apt-get install -y cuda-toolkit-12-4 && \
-        git clone -b v0.1.6 https://github.com/flashinfer-ai/flashinfer.git --recursive && \
-        cd flashinfer/python && \
+        git clone -b v0.2.0.post1 https://github.com/flashinfer-ai/flashinfer.git --recursive && \
+        cd flashinfer && \
         pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
     fi
 
@@ -268,7 +271,7 @@ RUN PYTHON_VERSION_STR=$(echo ${PYTHON_VERSION} | sed 's/\.//g') && \
 RUN echo 'tzdata tzdata/Areas select America' | debconf-set-selections \
     && echo 'tzdata tzdata/Zones/America select Los_Angeles' | debconf-set-selections \
     && apt-get update -y \
-    && apt-get install -y ccache software-properties-common git curl sudo vim python3-pip libnccl2 \
+    && apt-get install -y ccache software-properties-common git curl sudo vim python3-pip libnccl2 libtcmalloc-minimal4 \
     && apt-get install -y ffmpeg libsm6 libxext6 libgl1 \
     && add-apt-repository ppa:deadsnakes/ppa \
     && apt-get update -y \
