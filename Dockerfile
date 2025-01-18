@@ -215,8 +215,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=bind,source=.git,target=.git \
     if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
         apt-get update && apt-get install -y cuda-toolkit-12-4 && \
-        git clone -b v0.2.0.post1 https://github.com/flashinfer-ai/flashinfer.git --recursive && \
-        cd flashinfer && \
+        git clone -b v0.1.6 https://github.com/flashinfer-ai/flashinfer.git --recursive && \
+        cd flashinfer/python && \
         pip --verbose wheel --use-pep517 --no-deps -w /workspace/dist --no-build-isolation --no-cache-dir . ; \
     fi
 
