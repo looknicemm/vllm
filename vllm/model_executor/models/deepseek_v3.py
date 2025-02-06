@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # Adapted from
 # https://github.com/huggingface/transformers/blob/v4.28.0/src/transformers/models/llama/modeling_llama.py
 # Copyright 2023 The vLLM team.
@@ -420,7 +422,8 @@ class DeepseekV3MLAAttention(nn.Module):
                                         quant_config=quant_config,
                                         prefix=f"{prefix}.o_proj")
 
-        rope_scaling["rope_type"] = 'deepseek_yarn'
+        if rope_scaling:
+            rope_scaling["rope_type"] = 'deepseek_yarn'
         self.rotary_emb = get_rope(qk_rope_head_dim,
                                    rotary_dim=qk_rope_head_dim,
                                    max_position=max_position_embeddings,
