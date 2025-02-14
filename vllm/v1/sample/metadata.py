@@ -20,7 +20,8 @@ class SamplingMetadata:
 
     generators: Dict[int, torch.Generator]
 
-    max_num_logprobs: int
+    # None means no logprobs, 0 means sampled token logprobs only
+    max_num_logprobs: Optional[int]
 
     no_penalties: bool
     prompt_token_ids: Optional[torch.Tensor]
@@ -31,3 +32,5 @@ class SamplingMetadata:
     output_token_ids: List[List[int]]
     min_tokens: List[int]
     stop_token_ids: List[Set[int]]
+
+    logit_bias: List[Optional[Dict[int, float]]]
