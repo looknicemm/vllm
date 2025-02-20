@@ -5,11 +5,11 @@
 # docs/source/dev/dockerfile/dockerfile.rst and
 # docs/source/assets/dev/dockerfile-stages-dependency.png
 
-ARG CUDA_VERSION=12.5.0
+ARG CUDA_VERSION=12.4.0
 #################### BASE BUILD IMAGE ####################
 # prepare basic build environment
-FROM nvcr.io/nvidia/pytorch:24.07-py3 AS base
-ARG CUDA_VERSION=12.5.0
+FROM nvcr.io/nvidia/pytorch:23.04-py3 AS base
+ARG CUDA_VERSION=12.4.0
 ARG PYTHON_VERSION=3.10
 # cuda arch list used by torch
 # can be useful for both `dev` and `test`
@@ -180,8 +180,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 #################### vLLM installation IMAGE ####################
 # image with vLLM installed
-FROM nvcr.io/nvidia/pytorch:24.07-py3 AS vllm-base
-ARG CUDA_VERSION=12.5.0
+FROM nvcr.io/nvidia/pytorch:23.04-py3 AS vllm-base
+ARG CUDA_VERSION=12.4.0
 ARG PYTHON_VERSION=3.10
 WORKDIR /vllm-workspace
 # max jobs used by Ninja to build extensions
